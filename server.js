@@ -1,3 +1,6 @@
+const stripe = require('stripe')('sk_test_51HcYc4FbotLHFPNb5D7z1LAWupGJsRItoHn4ugfHgDZuuS0NAmx4fCfuYGVBeyIgpGgQDZdRzQpTghx6E0bjm5cd00Eq88kkqf');
+const endpointSecret = 'whsec_Yx7ENY5st3cQg6D16QgcXf3CUvzL3Ti3';
+
 const express = require('express');
 const cors = require('cors')
 const fileUpload = require('express-fileupload')
@@ -18,7 +21,13 @@ const db = knex({
   }
 });
 
-app.use(express.json());
+app.use((req, res, next) => {
+  if (req.originalUrl === '/webhook') {
+    next();
+  } else {
+    express.json()(req, res, next);
+  }
+});
 app.use(cors());
 const PORT = 3001;
 app.listen(PORT, () => {
@@ -26,7 +35,7 @@ app.listen(PORT, () => {
 app.use('/images', express.static('images'))
 app.use(fileUpload());
 
-app.get('/excursions', (req, res) => {
+app.get('/excursions', (req, res) => {  
   const refactorResponse = (data) => {
     const responseData = [];
     data.forEach(e => {
@@ -65,14 +74,33 @@ app.get('/excursion/:id', (req, res) => {
         excPrice: e.price,
         bookedSeats: e.bookedseats
     }
-    return excursion
+    appendSeats(excursion)
   }
+
+  const appendSeats = (excursion) => {
+    db 
+    .select('seats')
+    .from('users')
+    .where('excursion_id', id)
+      .then(data => {
+      let seats = [];
+        data.forEach(o => {          
+          seats = seats.concat(o.seats)         
+        })
+          return seats;
+      }).then(seats => {
+        excursion = Object.assign(excursion, { bookedSeats: seats });
+        res.json(excursion)
+      })
+  }
+
   const { id } = req.params;  
   db
     .select('*')
     .from('excursionlist')
     .where('id', id)
-    .then(data => res.json(refactorResponse(data)))
+    .then(data => refactorResponse(data))
+  
 })
 
 app.post(`/login`, (req, res) => {
@@ -108,14 +136,6 @@ app.post('/uploadImage', function(req, res) {
   res.json('check')
 });
 
-app.post('/deleteExcursion', (req, res) => {
-})
-
-app.get('/checkdb', (req, res) => {
-  db.select('*').from('excursionlist').then(data => console.log(data))
-  res.send('ok')
-})
-
 app.post('/updateExcursion', (req, res) => {
   db('excursionlist')
     .where({ id: req.body.mainId })
@@ -139,3 +159,73 @@ app.post('/deleteExcursio', (req, res) => {
     .del()
     .then(res.json('ok'))
 })
+
+app.post('/create-session', async (req, res) => {
+  const excursionId = req.body.excursionId;
+  const customerName = req.body.name;
+  const customerPhone = req.body.phone;
+  const customerEmail = req.body.email;
+  const customerSeats = req.body.seats;
+  db.select('price', 'title', 'imageurl', 'date')
+    .from('excursionlist')
+    .where('id', excursionId)
+    .then(data => {   
+      initialize(data[0].price, data[0].title, data[0].imageurl, data[0].date)
+    })
+  const initialize = async (price, name, image, date) => {
+    const actualPrice = price * 100;
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'czk',
+            product_data: {
+              name: `${name} - ${date}`,
+              images: [`http://localhost:3001/images/${image}`],
+            },
+            unit_amount: actualPrice,
+          },
+          quantity: 1 * customerSeats.length,
+        },
+      ],
+      metadata: {
+        excursionId: excursionId,
+        customerName: customerName,
+        customerPhone: customerPhone,
+        customerEmail: customerEmail,
+        customerSeats: JSON.stringify(customerSeats)
+      },
+      mode: 'payment',      
+      success_url: `http://localhost:3000/excursions/Test1/14?success=true`,
+      cancel_url: `http://localhost:3000/excursions/Test1/14?canceled=true`,
+    });
+    res.json({ id: session.id });
+  }});
+
+  app.post('/webhook', express.raw({type: 'application/json'}), (req, res) => {
+    const payload = req.body;
+    const sig = req.headers['stripe-signature'];
+
+    let event;
+  
+    try {
+      event = stripe.webhooks.constructEvent(payload, sig, endpointSecret);
+    } catch (err) {
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+      db('users').insert({
+        excursion_id: session.metadata.excursionId,
+        email:session.metadata.customerEmail,
+        name: session.metadata.customerName,
+        phone: session.metadata.customerPhone,
+        seats: session.metadata.customerSeats,      
+      }).then()
+      res.json('ok')
+    }
+  
+    res.status(200);
+  });
