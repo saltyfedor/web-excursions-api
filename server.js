@@ -153,7 +153,6 @@ app.post('/updateExcursion', (req, res) => {
 })
 
 app.post('/deleteExcursio', (req, res) => {
-  console.log('check')  
   db('excursionlist')      
     .where({ id: req.body.mainId })
     .del()
@@ -166,6 +165,7 @@ app.post('/create-session', async (req, res) => {
   const customerPhone = req.body.phone;
   const customerEmail = req.body.email;
   const customerSeats = req.body.seats;
+  const cancelUrl = req.body.url
   db.select('price', 'title', 'imageurl', 'date')
     .from('excursionlist')
     .where('id', excursionId)
@@ -197,8 +197,8 @@ app.post('/create-session', async (req, res) => {
         customerSeats: JSON.stringify(customerSeats)
       },
       mode: 'payment',      
-      success_url: `http://localhost:3000/excursions/Test1/14?success=true`,
-      cancel_url: `http://localhost:3000/excursions/Test1/14?canceled=true`,
+      success_url: `http://localhost:3000/paymentsuccess`,
+      cancel_url: cancelUrl,
     });
     res.json({ id: session.id });
   }});
