@@ -9,7 +9,7 @@ const knex = require('knex')
 
 const app = express();
 const adminLogin = 'admin'
-const adminPass = 'mama220263'
+const adminPass = '123'
 
 const db = knex({
   client: 'pg',
@@ -150,6 +150,15 @@ app.post('/updateExcursion', (req, res) => {
       bookedseats: JSON.stringify(req.body.bookedSeats)
     })
     .then(res.json('ok'))
+})
+
+app.post('/clients', (req, res) => {
+  const id = req.body.id
+  db()
+    .select('*')
+    .from('users')
+    .where('excursion_id', id)
+    .then(data => res.json(data))
 })
 
 app.post('/deleteExcursio', (req, res) => {
