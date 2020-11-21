@@ -11,6 +11,14 @@ const app = express();
 const adminLogin = 'admin'
 const adminPass = '123'
 
+const PORT = process.env.PORT;
+const DATABASE_URL = process.env.DATABASE_URL;
+
+const frontAdress = 'http://localhost:3000';
+const backAdress = 'http://localhost:3001';
+
+console.log(`listening on ${PORT}`)
+
 const db = knex({
   client: 'pg',
   connection: {
@@ -29,7 +37,6 @@ app.use((req, res, next) => {
   }
 });
 app.use(cors());
-const PORT = 3001;
 app.listen(PORT, () => {
 });
 app.use('/images', express.static('images'))
@@ -95,9 +102,8 @@ app.get('/excursion/:id', (req, res) => {
   }
 
   const { id } = req.params;  
-  db
+  db('excursionlist')
     .select('*')
-    .from('excursionlist')
     .where('id', id)
     .then(data => refactorResponse(data))
   
@@ -154,12 +160,28 @@ app.post('/updateExcursion', (req, res) => {
 
 app.post('/clients', (req, res) => {
   const id = req.body.id
-  db()
-    .select('*')
-    .from('users')
+  db('users')
+    .select('*')    
     .where('excursion_id', id)
     .then(data => res.json(data))
 })
+
+app.post('/deleteClient', (req, res) => {
+  const id = req.body.id
+  const excursionId = req.body.excursionId
+  db('users')        
+    .where('id', id)
+    .del()
+    .then(() => {
+      db('users')
+        .select('*')
+        .where('excursion_id', excursionId)
+        .then(data => res.json(data))
+    }
+    )
+
+})
+
 
 app.post('/deleteExcursio', (req, res) => {
   db('excursionlist')      
@@ -191,7 +213,7 @@ app.post('/create-session', async (req, res) => {
             currency: 'czk',
             product_data: {
               name: `${name} - ${date}`,
-              images: [`http://localhost:3001/images/${image}`],
+              images: [`${backAdress}/images/${image}`],
             },
             unit_amount: actualPrice,
           },
@@ -206,7 +228,7 @@ app.post('/create-session', async (req, res) => {
         customerSeats: JSON.stringify(customerSeats)
       },
       mode: 'payment',      
-      success_url: `http://localhost:3000/paymentsuccess`,
+      success_url: `${frontAdress}/paymentsuccess`,
       cancel_url: cancelUrl,
     });
     res.json({ id: session.id });
