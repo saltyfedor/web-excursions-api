@@ -42,6 +42,11 @@ app.listen(PORT, () => {
 app.use('/images', express.static('images'))
 app.use(fileUpload());
 
+
+app.get('/', (req, res) => {
+  res.send('check')
+})
+
 app.get('/excursions', (req, res) => {  
   const refactorResponse = (data) => {
     const responseData = [];
