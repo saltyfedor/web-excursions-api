@@ -12,7 +12,6 @@ const adminLogin = 'admin'
 const adminPass = '123'
 
 const PORT = process.env.PORT;
-const DATABASE_URL = process.env.DATABASE_URL;
 
 const frontAdress = 'http://localhost:3000';
 const backAdress = 'http://localhost:3001';
@@ -22,10 +21,8 @@ console.log(`listening on ${PORT}`)
 const db = knex({
   client: 'pg',
   connection: {
-    host : 'postgresql-asymmetrical-56629',
-    user : 'postgres',
-    password : '08122001f',
-    database : 'excursions'
+    host : process.env.DATABASE_URL,
+    ssl : 'true',
   }
 });
 
