@@ -22,7 +22,7 @@ console.log(`listening on ${PORT}`)
 const db = knex({
   client: 'pg',
   connection: {
-    host : '127.0.0.1',
+    host : 'postgresql-asymmetrical-56629',
     user : 'postgres',
     password : '08122001f',
     database : 'excursions'
