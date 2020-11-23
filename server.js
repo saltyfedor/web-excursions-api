@@ -69,7 +69,8 @@ app.get('/excursions', (req, res) => {
   db
     .select('*')
     .from('excursionlist')
-    .then(data => res.json(refactorResponse(data)))  
+    .then(data => res.json(refactorResponse(data)))
+    .catch(res.status(400).json('unable to get excursions'))
 })
 
 app.get('/excursion/:id', (req, res) => {
@@ -103,7 +104,7 @@ app.get('/excursion/:id', (req, res) => {
       }).then(seats => {
         excursion = Object.assign(excursion, { bookedSeats: seats });
         res.json(excursion)
-      })
+      }).catch(res.status(400).json("unable to append seats"))
   }
 
   const { id } = req.params;  
@@ -135,8 +136,10 @@ app.put('/newExcursion', (req, res) => {
     price: req.body.excPrice,
     imageurl: req.body.excImageUrl,
     bookedseats: JSON.stringify(req.body.bookedSeats)
-  }).then()
-  res.json('ok')
+  }).then(res.json('ok')).catch(
+    res.status(400).json('unable to create new excursion')
+  )
+  
 })
 
 
@@ -144,7 +147,7 @@ app.put('/newExcursion', (req, res) => {
 app.post('/uploadImage', function(req, res) {
   let eImage = req.files.image
   eImage.mv(`./images/${req.files.image.name}`);
-  res.json('check')
+  res.json('check').catch(res.status(400).json('unable to upload image'))
 });
 
 app.post('/updateExcursion', (req, res) => {
@@ -160,7 +163,7 @@ app.post('/updateExcursion', (req, res) => {
       imageurl: req.body.excImageUrl,
       bookedseats: JSON.stringify(req.body.bookedSeats)
     })
-    .then(res.json('ok'))
+    .then(res.json('ok')).catch(res.status(400).json('unable to update excursion'))
 })
 
 app.post('/clients', (req, res) => {
@@ -168,7 +171,7 @@ app.post('/clients', (req, res) => {
   db('users')
     .select('*')    
     .where('excursion_id', id)
-    .then(data => res.json(data))
+    .then(data => res.json(data)).catch(res.status(400).json('unable to get clients'))
 })
 
 app.post('/deleteClient', (req, res) => {
@@ -183,7 +186,7 @@ app.post('/deleteClient', (req, res) => {
         .where('excursion_id', excursionId)
         .then(data => res.json(data))
     }
-    )
+    ).catch(res.status(400).json('unable to delete clients'))
 
 })
 
@@ -192,7 +195,7 @@ app.post('/deleteExcursio', (req, res) => {
   db('excursionlist')      
     .where({ id: req.body.mainId })
     .del()
-    .then(res.json('ok'))
+    .then(res.json('ok')).catch(res.status(400).json('unable to delete excursion'))
 })
 
 app.post('/create-session', async (req, res) => {
